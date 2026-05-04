@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>游戏开发模拟器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        /* 动态星空 + 流动光晕背景 */
+        body {
+            background: radial-gradient(ellipse at 20% 30%, #0a0f2a, #02040c);
+            font-family: 'Inter', 'Segoe UI', 'Poppins', system-ui, -apple-system, sans-serif;
+            color: #f0f3ff;
+            padding: 28px 24px;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: auto;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at center, rgba(59,130,246,0.08) 0%, transparent 60%);
+            animation: aurora 20s infinite alternate;
+            pointer-events: none;
+            z-index: 0;
+        }
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(transparent, transparent 2px, rgba(59,130,246,0.02) 2px, rgba(59,130,246,0.02) 4px);
+            pointer-events: none;
+            z-index: 0;
+        }
+        @keyframes aurora {
+            0% { transform: rotate(0deg) scale(1); opacity: 0.3; }
+            100% { transform: rotate(5deg) scale(1.2); opacity: 0.7; }
+        }
+
+        /* 游戏主容器 */
+        .game-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: none;  /* 初始隐藏，教程结束后显示 */
+            grid-template-columns: 1fr 1.1fr;
+            gap: 28px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .card {
+            background: rgba(12, 22, 40, 0.65);
+            backdrop-filter: blur(18px);
+            border-radius: 44px;
+            border: 1px solid rgba(59, 130, 246, 0.35);
+            box-shadow: 0 30px 45px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            border-color: rgba(59, 130, 246, 0.6);
+            box-shadow: 0 35px 55px -12px rgba(0, 0, 0, 0.6);
+        }
+        .card-padding { padding: 24px 30px; }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 18px;
+            margin: 24px 0 28px;
+        }
+        .stat-item {
+            background: rgba(8, 16, 30, 0.8);
+            border-radius: 28px;
+            padding: 14px 18px;
+            border-left: 3px solid #3b82f6;
+            transition: all 0.2s;
+            cursor: help;
+        }
+        .stat-item:hover {
+            transform: translateY(-4px);
+            background: rgba(20, 35, 65, 0.9);
+            border-left-width: 4px;
+        }
+        .stat-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 500;
+            color: #9bb4f0;
+            margin-bottom: 6px;
+        }
+        .stat-value {
+            font-size: 32px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #f0f5ff, #b9d0ff);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            line-height: 1.1;
+        }
+        .stat-value.danger { background: linear-gradient(135deg, #ffaa66, #ff6b7c); background-clip: text; }
+        .bug-number { background: linear-gradient(135deg, #ff9a6e, #ff3a5e); background-clip: text; }
+
+        .action-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 20px 0 12px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(59,130,246,0.3);
+        }
+        .btn {
+            background: linear-gradient(145deg, #1f2c46, #121b30);
+            border: none;
+            color: #eef3ff;
+            font-weight: 600;
+            font-size: 12px;
+            padding: 8px 16px;
+            border-radius: 60px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            white-space: nowrap;
+        }
+        .btn:hover {
+            background: linear-gradient(145deg, #2e3f62, #1e2d48);
+            transform: scale(0.96);
+        }
+        .btn-primary { background: linear-gradient(145deg, #2a6b3e, #1c4f2a); }
+        .btn-warning { background: linear-gradient(145deg, #8a4e2a, #6a3820); }
+        .save-load-bar { display: flex; justify-content: flex-end; gap: 14px; margin-bottom: 20px; }
+        .recruit-counter {
+            background: #0f172ad9;
+            border-radius: 40px;
+            padding: 4px 14px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-left: 12px;
+            border: 1px solid #3b82f680;
+        }
+
+        .number-input-group {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #0f172a60;
+            border-radius: 60px;
+            padding: 4px 12px 4px 16px;
+            margin-left: 10px;
+        }
+        .number-input-group input {
+            width: 55px;
+            background: #0b1020;
+            border: 1px solid #3b82f6;
+            border-radius: 40px;
+            padding: 5px 8px;
+            color: white;
+            font-weight: bold;
+            text-align: center;
+            outline: none;
+        }
+
+        [tooltip] { position: relative; }
+        [tooltip]:hover::after {
+            content: attr(tooltip);
+            position: absolute;
+            bottom: 130%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #0a0f1ee6;
+            backdrop-filter: blur(12px);
+            color: #ffde9e;
+            font-size: 11px;
+            padding: 5px 10px;
+            border-radius: 20px;
+            white-space: nowrap;
+            z-index: 200;
+            border: 1px solid #3b82f6;
+            pointer-events: none;
+        }
+
+        .section-title {
+            font-size: 21px;
+            font-weight: 700;
+            margin: 20px 0 16px 0;
+            padding-left: 16px;
+            border-left: 5px solid #3b82f6;
+            background: linear-gradient(90deg, #ffffff, #b0ccff);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+        .badge {
+            background: #0a102ad9;
+            border-radius: 50px;
+            padding: 4px 14px;
+            font-size: 12px;
+            border: 1px solid #3b82f680;
+        }
+        .log-area {
+            background: #030a1acc;
+            border-radius: 28px;
+            padding: 16px;
+            height: 210px;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            border: 1px solid #2a3e70;
+        }
+        .achievement-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .achievement-badge {
+            background: #0f142a;
+            border-radius: 40px;
+            padding: 5px 15px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .achievement-badge.unlocked { background: #2d6e3f; box-shadow: 0 0 8px #4ade80; }
+
+        .pressure-monitor {
+            background: rgba(8, 16, 30, 0.75);
+            border-radius: 28px;
+            padding: 14px 18px;
+            margin: 16px 0 0 0;
+            border-left: 3px solid #f97316;
+        }
+        .pressure-stats {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .pressure-bar {
+            background: #1f2c46;
+            border-radius: 20px;
+            height: 8px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+        .pressure-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #4ade80, #f97316, #ef4444);
+            border-radius: 20px;
+            transition: width 0.2s;
+        }
+        .pressure-warning { color: #ff6b7c; font-weight: bold; }
+        canvas {
+            margin-top: 12px;
+            background: rgba(0,0,0,0.4);
+            border-radius: 20px;
+            width: 100%;
+            height: 120px;
+        }
+
+        .rule-doc {
+            margin-top: 45px;
+            background: #0b1022dd;
+            border-radius: 48px;
+            padding: 24px 36px;
+            border: 1px solid #3b82f670;
+            backdrop-filter: blur(10px);
+        }
+        .rule-doc summary {
+            font-size: 20px;
+            font-weight: 700;
+            cursor: pointer;
+            color: #8aadff;
+            transition: 0.1s;
+        }
+        .rule-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 14px 0;
+            background: rgba(0,0,0,0.4);
+            border-radius: 20px;
+            overflow: hidden;
+        }
+        .rule-table th, .rule-table td {
+            border: 1px solid #3b82f680;
+            padding: 8px 12px;
+            text-align: left;
+            vertical-align: top;
+        }
+        .rule-table th { background: #1e2a4a; color: #ffd966; font-weight: 600; }
+        .highlight-money { color: #4ade80; font-weight: 600; }
+        .highlight-energy { color: #f97316; font-weight: 600; }
+        .highlight-tech { color: #c084fc; font-weight: 600; }
+        .highlight-rep { color: #f87171; font-weight: 600; }
+        .highlight-warning { color: #ffb347; }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 20px;
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            color: #1e1a2f;
+            padding: 10px 20px;
+            border-radius: 60px;
+            font-weight: bold;
+            z-index: 1000;
+            animation: fadeOutUp 3s forwards;
+        }
+        @keyframes fadeOutUp {
+            0% { opacity: 1; transform: translateY(0);}
+            80% { opacity: 1; }
+            100% { opacity: 0; transform: translateY(-30px); display: none;}
+        }
+        @media (max-width: 900px) { .game-container { grid-template-columns: 1fr; } body { padding: 16px; } .btn { font-size: 10px; padding: 6px 10px; } }
+
+        /* 新手教程弹窗样式 */
+        .tutorial-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(10px);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Inter', sans-serif;
+        }
+        .tutorial-card {
+            background: rgba(20, 30, 55, 0.95);
+            border-radius: 48px;
+            padding: 32px 40px;
+            max-width: 550px;
+            width: 90%;
+            border: 1px solid rgba(59,130,246,0.6);
+            box-shadow: 0 30px 50px rgba(0,0,0,0.5);
+            backdrop-filter: blur(20px);
+            color: #eef3ff;
+            text-align: center;
+        }
+        .tutorial-card h2 {
+            font-size: 28px;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #fff, #7aa9ff);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+        .tutorial-content {
+            font-size: 16px;
+            line-height: 1.5;
+            margin: 20px 0;
+            min-height: 180px;
+            text-align: left;
+        }
+        .tutorial-content p {
+            margin: 12px 0;
+        }
+        .tutorial-content .highlight {
+            color: #ffb347;
+            font-weight: bold;
+        }
+        .tutorial-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            gap: 12px;
+        }
+        .tutorial-buttons button {
+            background: #1e2a4a;
+            border: none;
+            color: white;
+            padding: 8px 24px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: 0.2s;
+        }
+        .tutorial-buttons button:hover {
+            background: #2d3e6e;
+            transform: scale(0.97);
+        }
+        .tutorial-buttons .skip-btn {
+            background: #4a2a2a;
+        }
+        .tutorial-buttons .skip-btn:hover {
+            background: #6a3a3a;
+        }
+    </style>
+</head>
+<body>
+    <!-- 新手教程遮罩 -->
+    <div id="tutorialOverlay" class="tutorial-overlay">
+        <div class="tutorial-card">
+            <h2>🎮 欢迎来到游戏开发模拟器</h2>
+            <div id="tutorialText" class="tutorial-content">
+                <!-- 动态内容 -->
+            </div>
+            <div class="tutorial-buttons">
+                <button id="prevBtn" style="display:none;">◀ 上一步</button>
+                <button id="nextBtn">下一步 ▶</button>
+                <button id="skipBtn" class="skip-btn">跳过教程</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 游戏主容器（初始隐藏） -->
+    <div class="game-container" id="gameContainer">
+        <!-- 左栏 -->
+        <div>
+            <div class="card card-padding">
+                <div class="save-load-bar">
+                    <button class="btn btn-primary" id="saveGameBtn">💾 存档 (.gds)</button>
+                    <button class="btn" id="loadGameBtn">📂 读档</button>
+                    <input type="file" id="loadFileInput" accept=".gds" style="display: none;" />
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                    <h2 style="font-size: 28px; font-weight: 800; background: linear-gradient(135deg,#fff,#7aa9ff); background-clip:text; -webkit-background-clip:text; color:transparent;">🎮 游戏开发模拟器</h2>
+                    <span class="badge" id="weekDisplay">第1周 | 1月1日</span>
+                </div>
+                <div class="stat-grid" id="statsPanel"></div>
+                <div style="display: flex; justify-content: space-between;">
+                    <strong>⚡ 行动值: <span id="actionPoints">10</span> / <span id="maxAction">10</span></strong>
+                    <span style="font-size:13px;">📅 每周重置</span>
+                </div>
+                <div class="action-group" id="weeklyActions"></div>
+                <div style="margin-top: 20px; display: flex; gap: 12px;">
+                    <button class="btn btn-primary" id="endWeekBtn">✅ 结束本周 (结算)</button>
+                    <button class="btn btn-warning" id="resetGameBtn">🔄 重开游戏</button>
+                </div>
+            </div>
+
+            <div class="card card-padding" style="margin-top: 24px;">
+                <div class="section-title">👥 团队招募 (上限30人)</div>
+                <div id="teamStatus" style="margin-bottom: 12px;">🐣萌新:0 | 👨‍💻普通:0 | 🧙大神:0 | 📋管理:0</div>
+                <div id="recruitPanel"></div>
+                <div style="margin-top: 15px;">💰 每周工资总额: <strong id="totalSalary">0</strong> 元</div>
+                <div class="badge" style="margin-top: 12px;">✨ 每周最多招募4人，消耗1行动值/人</div>
+            </div>
+        </div>
+
+        <!-- 右栏 -->
+        <div>
+            <div class="card card-padding">
+                <div class="section-title">🖥️ 服务器硬件</div>
+                <div id="onlineStatus">🔒 未开通线上功能 (V2.0开发)</div>
+                <div id="hardwareInfo" style="margin: 12px 0;"></div>
+                <div id="pressureMonitor" class="pressure-monitor"></div>
+                <div id="hardwareShop"></div>
+                <div class="badge" style="margin-top: 12px;">⚙️ 同型号硬件购买价格线性递增 (每块+30%基础价) | 新玩家+5元/人 | 压力公式: CPU=人数×1.5 , GPU=人数×1.2</div>
+            </div>
+
+            <div class="card card-padding" style="margin-top: 24px;">
+                <div class="section-title">🏆 成就殿堂</div>
+                <div id="achievementList" class="achievement-list"></div>
+                <div class="section-title">📜 事件日志</div>
+                <div id="logArea" class="log-area"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 规则手册（保留） -->
+    <div class="rule-doc" style="display: none;" id="ruleDoc">
+        <details>
+            <summary>📖 完整规则手册</summary>
+            <div style="margin-top: 24px;">
+                <p>规则详情请参考游戏内说明或教程。完整规则在教程结束后可展开查看。</p>
+            </div>
+        </details>
+    </div>
+
+    <script>
+        // ---------------------- 新手教程步骤 ----------------------
+        const tutorialSteps = [
+            {
+                title: "🎯 欢迎！",
+                content: `<p>欢迎来到 <span class="highlight">游戏开发模拟器</span>！你将扮演一家独立游戏工作室的经营者。</p>
+                          <p>目标：<strong>扩大玩家规模、管理团队、升级硬件，避免破产或声誉归零</strong>。</p>
+                          <p>教程将带你了解各个界面区域的功能，<strong>点击“下一步”开始</strong>。</p>`
+            },
+            {
+                title: "📊 核心资源面板",
+                content: `<p>左侧上方是<span class="highlight">核心资源显示区</span>：</p>
+                          <ul>
+                            <li><strong class="highlight-money">💰 经费</strong>：用于各项支出，每新增1个玩家得5元。</li>
+                            <li><strong class="highlight-energy">⚡ 精力</strong>：执行行动会消耗精力，低于30%会有惩罚。</li>
+                            <li><strong class="highlight-tech">🔧 技术力</strong>：影响能否进行高级版本更新。</li>
+                            <li><strong class="highlight-rep">⭐ 声誉</strong>：影响广告、募捐效果，归零游戏结束。</li>
+                            <li><strong>👥 游玩人数、🐛 Bug数、📦 版本、💥 爆炸周、📈 加班压力</strong>等。</li>
+                          </ul>
+                          <p>鼠标悬停可查看详细说明。</p>`
+            },
+            {
+                title: "🛠️ 行动按钮区",
+                content: `<p>左侧中间区域是<span class="highlight">行动按钮栏</span>：</p>
+                          <ul>
+                            <li><strong>🔧 小更新</strong>：修复1个bug，补丁版本+1，吸引少量玩家。</li>
+                            <li><strong>⭐ 大更新</strong>：修复3个bug，次版本+1，吸引较多玩家。</li>
+                            <li><strong>🔥 重写</strong>：修复所有bug，主版本+1，吸引大量玩家（需技术≥200）。</li>
+                            <li><strong>🌐 开发线上</strong>：开启服务器压力系统（一次性）。</li>
+                            <li><strong>⏰ 加班</strong>：获得额外行动值，但会降低下周上限并永久增加bug率。</li>
+                            <li><strong>📖 学习</strong>：提升技术力。</li>
+                            <li><strong>📢 广告</strong>：按当前人数的1/3增加玩家（有限制）。</li>
+                            <li><strong>🕊️ 鸽</strong>：唯一主动恢复精力的手段。</li>
+                            <li><strong>🎁 募捐</strong>：获得金钱但降低声誉，每周1次。</li>
+                            <li><strong>🏢 团建</strong>：恢复行动上限。</li>
+                          </ul>
+                          <p>鼠标悬停按钮可查看详细消耗与效果。</p>`
+            },
+            {
+                title: "👥 团队招募区",
+                content: `<p>左侧下方是<span class="highlight">团队招募区</span>：</p>
+                          <ul>
+                            <li><strong>萌新</strong>：周薪800，增加精力消耗和bug率。</li>
+                            <li><strong>普通</strong>：周薪1000，降低精力消耗。</li>
+                            <li><strong>大神</strong>：周薪2000，大幅降低精力消耗和bug率，并可抵挡黑客/勒索病毒。</li>
+                            <li><strong>管理</strong>：周薪1200，降低精力消耗并每周增加声誉。</li>
+                          </ul>
+                          <p>每周最多招募4人，消耗1行动值/人。</p>`
+            },
+            {
+                title: "🖥️ 服务器硬件 & 压力监控",
+                content: `<p>右侧上方是<span class="highlight">硬件与压力监控区</span>：</p>
+                          <ul>
+                            <li>可购买/更换CPU和GPU，性能点越高压力承受能力越强。</li>
+                            <li><strong>压力公式</strong>：CPU压力 = 人数 × 1.5，GPU压力 = 人数 × 1.2。</li>
+                            <li>超过性能点服务器会爆炸，连续爆炸周数会累积惩罚。</li>
+                            <li>曲线图展示最近20周的压力变化。</li>
+                          </ul>
+                          <p>开通线上功能后压力系统才会生效。</p>`
+            },
+            {
+                title: "🏆 成就殿堂 & 事件日志",
+                content: `<p>右侧下方显示<span class="highlight">成就进度</span>和<span class="highlight">事件日志</span>：</p>
+                          <ul>
+                            <li>达成特定目标（如玩家破百、技术力突破、连续无bug等）可获得一次性奖励。</li>
+                            <li>每周结算时有45%概率触发随机事件（正面或负面），动态难度调整。</li>
+                            <li>所有重要操作和结果都会记录在日志中。</li>
+                          </ul>
+                          <p>完成后点击“开始游戏”即可正式经营你的工作室！</p>`
+            }
+        ];
+
+        let currentStep = 0;
+        const tutorialOverlay = document.getElementById('tutorialOverlay');
+        const gameContainer = document.getElementById('gameContainer');
+        const ruleDoc = document.getElementById('ruleDoc');
+        const tutorialTextDiv = document.getElementById('tutorialText');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const skipBtn = document.getElementById('skipBtn');
+
+        function updateTutorial() {
+            const step = tutorialSteps[currentStep];
+            tutorialTextDiv.innerHTML = `<h3>${step.title}</h3>${step.content}`;
+            if (currentStep === 0) {
+                prevBtn.style.display = 'none';
+            } else {
+                prevBtn.style.display = 'inline-block';
+            }
+            if (currentStep === tutorialSteps.length - 1) {
+                nextBtn.textContent = '开始游戏 🚀';
+            } else {
+                nextBtn.textContent = '下一步 ▶';
+            }
+        }
+
+        function finishTutorial() {
+            tutorialOverlay.style.display = 'none';
+            gameContainer.style.display = 'grid';
+            ruleDoc.style.display = 'block';
+            // 确保游戏初始状态正常（UI已加载）
+            if (typeof initGame === 'function') initGame();
+        }
+
+        nextBtn.addEventListener('click', () => {
+            if (currentStep < tutorialSteps.length - 1) {
+                currentStep++;
+                updateTutorial();
+            } else {
+                finishTutorial();
+            }
+        });
+
+        prevBtn.addEventListener('click', () => {
+            if (currentStep > 0) {
+                currentStep--;
+                updateTutorial();
+            }
+        });
+
+        skipBtn.addEventListener('click', () => {
+            finishTutorial();
+        });
+
+        updateTutorial();
+
+        // ---------------------- 游戏核心代码 (完整保留，仅修改初始化入口) ----------------------
+        let game = {
+            money: 800, energy: 50, tech: 40, reputation: 1.2, playerCount: 15, bugCount: 0,
+            version: "V1.0", onlineEnabled: false,
+            team: { junior:0, normal:0, expert:0, admin:0 },
+            cpuModel: "5600", cpuQty: 1, gpuModel: "RTX 3050(6G)", gpuQty: 1,
+            week: 1, year: 1, month: 1, day: 1,
+            actionPoints: 10, actionMax: 10,
+            extraBugChanceWeek: false, explosionWeeks: 0, greedStack: 0, overtimeStress: 0,
+            recruitCountThisWeek: 0,
+            hardwarePurchaseCounter: { cpu: {}, gpu: {} },
+            achievements: {
+                player_100: false, player_1000: false, player_10000: false,
+                tech_200: false, tech_500: false, noBug10: false, noBug20: false,
+                online_first: false, overload: false,
+                ironBowl: false, hardwareMad: false, hundredWeeks: false, hugeGrowth: false
+            },
+            consecutiveNoBugWeeks: 0,
+            eventCooldown: 0,
+            pressureHistory: [],
+            summerBonusFactor: 1.0,
+            winterBonusFactor: 1.0,
+            totalWeeksSurvived: 0,
+            hugeGrowthFlag: false
+        };
+
+        const cpus = {
+            "9950X3D": {price:4800, perf:3500},
+            "9900X": {price:3200, perf:2800},
+            "7800X3D": {price:2600, perf:2200},
+            "7600X": {price:1400, perf:1600},
+            "5600": {price:600, perf:1000},
+            "i3-12100F": {price:500, perf:600}
+        };
+        const gpus = {
+            "RTX 5090": {price:30000, perf:5000},
+            "RTX 4090": {price:20000, perf:4000},
+            "RTX 5080": {price:10000, perf:2100},
+            "RTX 4060Ti": {price:3500, perf:1300},
+            "RTX 4060": {price:2500, perf:1100},
+            "RTX 3050(8G)": {price:1500, perf:750},
+            "RTX 3050(6G)": {price:1200, perf:550}
+        };
+
+        // ========== 辅助函数 ==========
+        function addLog(msg) {
+            let logDiv = document.getElementById("logArea");
+            if (!logDiv) return;
+            let p = document.createElement("div");
+            p.innerText = `[W${game.week}] ${msg}`;
+            logDiv.appendChild(p);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            while(logDiv.children.length > 70) logDiv.removeChild(logDiv.firstChild);
+        }
+        function showToast(title, reward) {
+            let t = document.createElement('div');
+            t.className = 'toast';
+            t.innerHTML = `🏆 ${title}<br><span style="font-size:10px;">${reward}</span>`;
+            document.body.appendChild(t);
+            setTimeout(() => t.remove(), 3000);
+        }
+
+        function drawPressureChart() {
+            const canvas = document.getElementById("pressureChart");
+            if (!canvas) return;
+            const ctx = canvas.getContext("2d");
+            const w = canvas.clientWidth, h = canvas.clientHeight;
+            canvas.width = w;
+            canvas.height = h;
+            ctx.clearRect(0, 0, w, h);
+            if (!game.onlineEnabled || game.pressureHistory.length === 0) {
+                ctx.fillStyle = "#aaa";
+                ctx.font = "12px monospace";
+                ctx.fillText("开启线上功能后显示压力曲线", 20, 40);
+                return;
+            }
+            const history = game.pressureHistory.slice(-20);
+            const maxCpu = Math.max(...history.map(p => p[0]), 1);
+            const maxGpu = Math.max(...history.map(p => p[1]), 1);
+            const maxVal = Math.max(maxCpu, maxGpu);
+            const stepX = w / (history.length - 1 || 1);
+            ctx.beginPath();
+            ctx.strokeStyle = "#3b82f6";
+            ctx.lineWidth = 2;
+            for (let i = 0; i < history.length; i++) {
+                let x = i * stepX;
+                let y = h - (history[i][0] / maxVal) * h * 0.8;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.strokeStyle = "#f97316";
+            ctx.lineWidth = 2;
+            for (let i = 0; i < history.length; i++) {
+                let x = i * stepX;
+                let y = h - (history[i][1] / maxVal) * h * 0.8;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            ctx.fillStyle = "#3b82f6";
+            ctx.fillRect(w-60, 10, 12, 12);
+            ctx.fillStyle = "#f97316";
+            ctx.fillRect(w-60, 30, 12, 12);
+            ctx.fillStyle = "#fff";
+            ctx.font = "10px monospace";
+            ctx.fillText("CPU", w-44, 20);
+            ctx.fillText("GPU", w-44, 40);
+        }
+
+        function updatePressureMonitor() {
+            const container = document.getElementById("pressureMonitor");
+            if (!container) return;
+            if (!game.onlineEnabled) {
+                container.innerHTML = `<div style="text-align:center; opacity:0.7;">🔒 线上功能未开启，无服务器压力</div>`;
+                return;
+            }
+            const people = Math.max(1, game.playerCount);
+            const cpuPressure = people * 1.5;
+            const gpuPressure = people * 1.2;
+            const cpuPerf = (cpus[game.cpuModel].perf * game.cpuQty) * (game.week>52 ? Math.pow(0.995, game.week-52) : 1);
+            const gpuPerf = (gpus[game.gpuModel].perf * game.gpuQty) * (game.week>52 ? Math.pow(0.995, game.week-52) : 1);
+            const cpuPercent = Math.min(100, Math.floor((cpuPressure / cpuPerf) * 100));
+            const gpuPercent = Math.min(100, Math.floor((gpuPressure / gpuPerf) * 100));
+            const cpuOver = cpuPressure > cpuPerf;
+            const gpuOver = gpuPressure > gpuPerf;
+
+            container.innerHTML = `
+                <div><strong>📊 实时压力监控</strong></div>
+                <div class="pressure-stats">
+                    <span>🖥️ CPU 压力</span>
+                    <span class="${cpuOver ? 'pressure-warning' : ''}">${cpuPressure.toFixed(1)} / ${cpuPerf.toFixed(0)} (${cpuPercent}%)</span>
+                </div>
+                <div class="pressure-bar"><div class="pressure-fill" style="width: ${cpuPercent}%; background: ${cpuPercent>100 ? '#ef4444' : (cpuPercent>80 ? '#f97316' : '#4ade80')};"></div></div>
+                <div class="pressure-stats" style="margin-top: 8px;">
+                    <span>🎮 GPU 压力</span>
+                    <span class="${gpuOver ? 'pressure-warning' : ''}">${gpuPressure.toFixed(1)} / ${gpuPerf.toFixed(0)} (${gpuPercent}%)</span>
+                </div>
+                <div class="pressure-bar"><div class="pressure-fill" style="width: ${gpuPercent}%; background: ${gpuPercent>100 ? '#ef4444' : (gpuPercent>80 ? '#f97316' : '#4ade80')};"></div></div>
+                ${(cpuOver || gpuOver) ? '<div class="pressure-warning" style="margin-top:8px;">⚠️ 服务器超负荷，即将爆炸！</div>' : ''}
+                <canvas id="pressureChart" width="400" height="120" style="width:100%; height:120px; margin-top:12px;"></canvas>
+            `;
+            drawPressureChart();
+        }
+
+        function recordPressure() {
+            if (!game.onlineEnabled) return;
+            const people = Math.max(1, game.playerCount);
+            const cpuPressure = people * 1.5;
+            const gpuPressure = people * 1.2;
+            game.pressureHistory.push([cpuPressure, gpuPressure]);
+            if (game.pressureHistory.length > 20) game.pressureHistory.shift();
+            drawPressureChart();
+        }
+
+        function updateUI() {
+            document.getElementById("statsPanel").innerHTML = `
+                <div class="stat-item"><div class="stat-label">💰 经费</div><div class="stat-value">${Math.floor(game.money)}</div></div>
+                <div class="stat-item"><div class="stat-label">⚡ 精力</div><div class="stat-value ${game.energy<20?'danger':''}">${game.energy.toFixed(1)}%</div></div>
+                <div class="stat-item"><div class="stat-label">🔧 技术力</div><div class="stat-value">${Math.floor(game.tech)}</div></div>
+                <div class="stat-item"><div class="stat-label">⭐ 声誉</div><div class="stat-value">${game.reputation.toFixed(3)}</div></div>
+                <div class="stat-item"><div class="stat-label">👥 游玩人数</div><div class="stat-value">${Math.floor(game.playerCount)}</div></div>
+                <div class="stat-item"><div class="stat-label">🐛 Bug数</div><div class="stat-value bug-number">${game.bugCount}</div></div>
+                <div class="stat-item"><div class="stat-label">📦 版本</div><div class="stat-value">${game.version}</div></div>
+                <div class="stat-item"><div class="stat-label">💥 爆炸周</div><div class="stat-value ${game.explosionWeeks>0?'danger':''}">${game.explosionWeeks}</div></div>
+                <div class="stat-item"><div class="stat-label">📈 加班压力</div><div class="stat-value">${(game.overtimeStress*100).toFixed(0)}%</div></div>
+            `;
+            document.getElementById("actionPoints").innerText = game.actionPoints;
+            document.getElementById("maxAction").innerText = game.actionMax;
+            let team = game.team;
+            document.getElementById("teamStatus").innerHTML = `🐣萌新:${team.junior}  👨‍💻普通:${team.normal}  🧙大神:${team.expert}  📋管理:${team.admin}`;
+            let salary = team.junior*800 + team.normal*1000 + team.expert*2000 + team.admin*1200;
+            document.getElementById("totalSalary").innerText = salary;
+            document.getElementById("onlineStatus").innerHTML = game.onlineEnabled ? "✅ 线上功能已开启 (压力生效)" : "🔒 未开通线上功能";
+            let cpuPerf = (cpus[game.cpuModel].perf * game.cpuQty) * (game.week>52 ? Math.pow(0.995, game.week-52) : 1);
+            let gpuPerf = (gpus[game.gpuModel].perf * game.gpuQty) * (game.week>52 ? Math.pow(0.995, game.week-52) : 1);
+            document.getElementById("hardwareInfo").innerHTML = `<div>🖥️ CPU: ${game.cpuModel} x${game.cpuQty}  | 性能: ${cpuPerf.toFixed(0)}</div><div>🎮 GPU: ${game.gpuModel} x${game.gpuQty}  | 性能: ${gpuPerf.toFixed(0)}</div>`;
+            let monthNames = ["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
+            document.getElementById("weekDisplay").innerHTML = `第${game.week}周 | ${game.month}月${game.day}日`;
+            let rcSpan = document.getElementById("recruitCounter");
+            if (rcSpan) rcSpan.innerText = `本周已招募: ${game.recruitCountThisWeek}/4`;
+            updateAchievementUI();
+            updatePressureMonitor();
+        }
+        function updateAchievementUI() {
+            const container = document.getElementById('achievementList');
+            const ach = game.achievements;
+            const items = [
+                { key:'player_100', name:'百人斩' },{ key:'player_1000', name:'千人斩' },{ key:'player_10000', name:'万人迷' },
+                { key:'tech_200', name:'技术革新' },{ key:'tech_500', name:'技术爆炸' },{ key:'noBug10', name:'稳如泰山' },
+                { key:'noBug20', name:'绝对防御' },{ key:'online_first', name:'在线启航' },{ key:'overload', name:'灾难大师' },
+                { key:'ironBowl', name:'铁饭碗' },{ key:'hardwareMad', name:'硬件狂魔' },{ key:'hundredWeeks', name:'百战不死' },{ key:'hugeGrowth', name:'人山人海' }
+            ];
+            container.innerHTML = items.map(a => `<div class="achievement-badge ${ach[a.key] ? 'unlocked' : ''}">${ach[a.key] ? '🏆' : '🔒'} ${a.name}</div>`).join('');
+        }
+        function addPlayersAndMoney(delta) {
+            if(delta===0) return;
+            let old = game.playerCount;
+            game.playerCount = Math.max(0, game.playerCount + delta);
+            let real = game.playerCount - old;
+            if (real>0) { let income = real*5; game.money += income; addLog(`👥 人数 +${real}，获得 ${income} 元`); }
+            else if (real<0) addLog(`😭 人数 ${real}`);
+        }
+        function gameOver(reason) { alert(`游戏结束! ${reason}\n点击重开`); resetGame(); }
+        function resetGame() {
+            game = { money:800, energy:50, tech:40, reputation:1.2, playerCount:15, bugCount:0, version:"V1.0", onlineEnabled:false, team:{junior:0,normal:0,expert:0,admin:0}, cpuModel:"5600", cpuQty:1, gpuModel:"RTX 3050(6G)", gpuQty:1, week:1, year:1, month:1, day:1, actionPoints:10, actionMax:10, extraBugChanceWeek:false, explosionWeeks:0, greedStack:0, overtimeStress:0, recruitCountThisWeek:0, hardwarePurchaseCounter:{cpu:{},gpu:{}}, achievements:{ player_100:false,player_1000:false,player_10000:false,tech_200:false,tech_500:false,noBug10:false,noBug20:false,online_first:false,overload:false, ironBowl:false, hardwareMad:false, hundredWeeks:false, hugeGrowth:false }, consecutiveNoBugWeeks:0, eventCooldown:0, pressureHistory:[], summerBonusFactor:1.0, winterBonusFactor:1.0, totalWeeksSurvived:0, hugeGrowthFlag:false };
+            updateUI(); addLog("🔄 游戏已重置。");
+        }
+
+        function spendEnergy(baseCost) { let mult = 1 + (game.team.junior*0.01 - game.team.normal*0.03 - game.team.expert*0.05 - game.team.admin*0.04) + (game.explosionWeeks>=20?10:game.explosionWeeks>=10?1:game.explosionWeeks>=5?0.4:game.explosionWeeks>=1?0.05:0); let final=baseCost*mult; if(final<0) final=0; if(game.energy<final) return false; game.energy-=final; if(game.energy<=0) gameOver("精力耗尽"); return true; }
+        function getActionCostPenalty(a) { return game.energy<5 ? a*3 : (game.energy<10 ? a*2 : (game.energy<20 ? a*2 : a)); }
+        function canAffordAction(act,money,eng,tech) { let r=getActionCostPenalty(act); if(game.actionPoints<r) return false; let fm=money*(game.energy<30?1.5:1); if(game.money<fm) return false; if(game.energy<eng) return false; if(game.tech<tech) return false; return true; }
+        function executeCost(act,money,eng,tech) { let r=getActionCostPenalty(act); game.actionPoints-=r; let fm=money*(game.energy<30?1.5:1); game.money-=fm; spendEnergy(eng); game.tech-=tech; if(game.tech<0) game.tech=0; if(game.money<0) game.money=0; }
+        function incVersion(t) { let m=game.version.match(/V(\d+)\.(\d+)(?:-(\d+))?/); if(!m) return; let maj=parseInt(m[1]), min=parseInt(m[2]), pat=m[3]?parseInt(m[3]):null; if(t==="patch") game.version=`V${maj}.${min}-${(pat===null?1:pat+1)}`; else if(t==="minor") game.version=`V${maj}.${min+1}`; else if(t==="major") game.version=`V${maj+1}.0`; else if(t==="online") game.version="V2.0"; }
+        function addPlayersByUpdate(type) { let gain=type==="small"?Math.floor(Math.random()*2)+1:type==="big"?Math.floor(Math.random()*6)+5:type==="rewrite"?Math.floor(Math.random()*31)+20:type==="online"?Math.floor(game.playerCount*0.1):0; if(game.tech>500 && type!=="online") gain=Math.floor(gain*0.5); if(gain>0) addPlayersAndMoney(gain); }
+        function calcBugChance(base) { let team=1+game.team.junior*0.04-game.team.expert*0.01; let exp=game.explosionWeeks>=20?26:(game.explosionWeeks>=10?6:(game.explosionWeeks>=5?2.25:(game.explosionWeeks>=1?1.25:1))); let extra=game.extraBugChanceWeek?0.25:0; let stress=1+game.overtimeStress; return Math.min(base*team*exp*stress*(1/(Math.max(game.energy,0.1)+1))+extra,85); }
+        function tryAddBug(base) { if(Math.random()*100 < calcBugChance(base)) { game.bugCount++; addLog(`🐞 恶性bug! 总数${game.bugCount}`); game.consecutiveNoBugWeeks=0; updateUI(); return true; } else { game.consecutiveNoBugWeeks++; return false; } }
+        function checkServerCrash() { if(!game.onlineEnabled) return; let people = Math.max(1, game.playerCount); let cpuPressure = people * 1.5; let gpuPressure = people * 1.2; let cpuPerf = (cpus[game.cpuModel].perf * game.cpuQty) * (game.week>52 ? Math.pow(0.995, game.week-52) : 1); let gpuPerf = (gpus[game.gpuModel].perf * game.gpuQty) * (game.week>52 ? Math.pow(0.995, game.week-52) : 1); if(cpuPressure > cpuPerf || gpuPressure > gpuPerf) { game.explosionWeeks++; addLog(`💥 服务器爆炸! 连续${game.explosionWeeks}周`); game.reputation = Math.max(0, game.reputation-0.025); } else { if(game.explosionWeeks>0) addLog(`✅ 服务器恢复`); game.explosionWeeks = 0; } if(game.explosionWeeks>=50) gameOver("服务器彻底损毁"); updatePressureMonitor(); }
+
+        const eventPool = [
+            { name: "口碑爆棚", type: "good", condition: () => true, weight: 1, effect: (g) => { g.reputation += 0.2; addLog("✨ 口碑爆棚，声誉+0.2"); } },
+            { name: "玩家自发安利", type: "good", condition: () => true, weight: 1, effect: (g) => { let gain = Math.floor(g.playerCount * 0.05); addPlayersAndMoney(gain); addLog(`🎉 自发安利 +${gain}人`); } },
+            { name: "技术突破", type: "good", condition: () => true, weight: 1, effect: (g) => { g.tech += 30; addLog("💡 技术突破 +30"); } },
+            { name: "投资商注资", type: "good", condition: () => true, weight: 1, effect: (g) => { let inv = Math.floor(g.playerCount * 2); g.money += inv; addLog(`🤝 注资 ${inv}元`); } },
+            { name: "黑客攻击", type: "bad", condition: (g) => (g.playerCount >= 10000 && g.onlineEnabled), weight: 0.2, effect: (g) => { let expertCount = g.team.expert; let chance = Math.min(0.8, expertCount * 0.1); if (expertCount > 0 && Math.random() < chance) { addLog(`🛡️ 大神程序员成功抵挡了黑客攻击！`); return; } g.bugCount++; addLog("🐛 黑客攻击，新增一个恶性bug！"); } },
+            { name: "竞品发布", type: "bad", condition: () => true, weight: 1, effect: (g) => { let loss = Math.floor(g.playerCount * 0.1); addPlayersAndMoney(-loss); addLog(`📉 竞品发布，流失 ${loss}人`); } },
+            { name: "员工罢工", type: "bad", condition: () => true, weight: 1, effect: (g) => { g.energy -= 10; if(g.energy<0) g.energy=0; addLog("⚡ 员工罢工，精力-10%"); } },
+            { name: "勒索病毒", type: "bad", condition: (g) => (g.playerCount >= 10000 && g.onlineEnabled), weight: 0.2, effect: (g) => { let expertCount = g.team.expert; let chance = Math.min(0.8, expertCount * 0.1); if (expertCount > 0 && Math.random() < chance) { addLog(`🛡️ 大神程序员成功抵御了勒索病毒！`); return; } let loss = Math.min(g.money * 0.2, 2000); g.money -= loss; addLog(`💰 勒索病毒损失 ${Math.floor(loss)}元`); } },
+            { name: "数据泄露丑闻", type: "bad", condition: () => true, weight: 1, effect: (g) => { g.reputation -= 0.15; let loss = Math.floor(g.playerCount * 0.05); addPlayersAndMoney(-loss); addLog(`📰 数据泄露丑闻，声誉-0.15，流失 ${loss}人`); } },
+            { name: "恶性竞争抹黑", type: "bad", condition: () => true, weight: 1, effect: (g) => { g.reputation -= 0.2; addLog(`😤 竞争对手恶意抹黑，声誉-0.2`); } },
+            { name: "服务器硬件故障", type: "bad", condition: () => true, weight: 1, effect: (g) => { let cost = Math.min(g.money * 0.15, 5000); g.money -= cost; addLog(`🔧 服务器硬件故障，维修花费 ${Math.floor(cost)}元`); } },
+            { name: "差评风波", type: "bad", condition: () => true, weight: 1, effect: (g) => { let loss = Math.floor(g.playerCount * 0.08); addPlayersAndMoney(-loss); addLog(`💢 差评风波，流失 ${loss}人`); } }
+        ];
+
+        function triggerRandomEvent() { if (game.eventCooldown > 0) return; let goodChance = 0.4; if (game.money < 1000) goodChance += 0.2; if (game.reputation < 0.6) goodChance -= 0.15; goodChance = Math.min(0.7, Math.max(0.3, goodChance)); const isGood = Math.random() < goodChance; let candidates = eventPool.filter(e => e.type === (isGood ? "good" : "bad") && (e.condition ? e.condition(game) : true)); if (candidates.length === 0) return; let totalWeight = candidates.reduce((s,e)=>s+e.weight,0); let rand = Math.random() * totalWeight, accum=0, selected=null; for(let e of candidates) { accum+=e.weight; if(rand<=accum) { selected=e; break; } } if(selected) selected.effect(game); game.eventCooldown=5; }
+
+        function checkAchievements() {
+            let a=game.achievements;
+            if(!a.player_100 && game.playerCount>=100) { a.player_100=true; game.money+=500; addLog("🏆 百人斩 +500💰"); showToast("百人斩","+500💰"); }
+            if(!a.player_1000 && game.playerCount>=1000) { a.player_1000=true; game.money+=2000; addLog("🏆 千人斩 +2000💰"); showToast("千人斩","+2000💰"); }
+            if(!a.player_10000 && game.playerCount>=10000) { a.player_10000=true; game.money+=10000; addLog("🏆 万人迷 +10000💰"); showToast("万人迷","+10000💰"); }
+            if(!a.tech_200 && game.tech>=200) { a.tech_200=true; game.reputation+=0.3; addLog("🏆 技术革新 声誉+0.3"); showToast("技术革新","声誉+0.3"); }
+            if(!a.tech_500 && game.tech>=500) { a.tech_500=true; game.money+=3000; addLog("🏆 技术爆炸 +3000💰"); showToast("技术爆炸","+3000💰"); }
+            if(!a.noBug10 && game.consecutiveNoBugWeeks>=10) { a.noBug10=true; game.reputation+=0.5; addLog("🏆 稳如泰山 声誉+0.5"); showToast("稳如泰山","声誉+0.5"); }
+            if(!a.noBug20 && game.consecutiveNoBugWeeks>=20) { a.noBug20=true; game.money+=5000; addLog("🏆 绝对防御 +5000💰"); showToast("绝对防御","+5000💰"); }
+            if(!a.online_first && game.onlineEnabled) { a.online_first=true; game.tech+=50; addLog("🏆 在线启航 技术+50"); showToast("在线启航","技术+50"); }
+            if(!a.overload && game.explosionWeeks>=5) { a.overload=true; game.money+=2000; addLog("🏆 灾难大师 +2000💰"); showToast("灾难大师","+2000💰"); }
+            if(!a.ironBowl && game.totalWeeksSurvived >= 52) { a.ironBowl=true; game.money+=3000; addLog("🏆 铁饭碗 连续52周未破产 +3000💰"); showToast("铁饭碗","+3000💰"); }
+            let totalHardware = game.cpuQty + game.gpuQty;
+            if(!a.hardwareMad && totalHardware >= 20) { a.hardwareMad=true; game.money+=5000; addLog("🏆 硬件狂魔 总硬件数≥20 +5000💰"); showToast("硬件狂魔","+5000💰"); }
+            if(!a.hundredWeeks && game.totalWeeksSurvived >= 100) { a.hundredWeeks=true; game.money+=10000; addLog("🏆 百战不死 累计度过100周 +10000💰"); showToast("百战不死","+10000💰"); }
+            if(!a.hugeGrowth && game.hugeGrowthFlag) { a.hugeGrowth=true; game.money+=8000; addLog("🏆 人山人海 单月人数增长超20000 +8000💰"); showToast("人山人海","+8000💰"); }
+            updateAchievementUI();
+        }
+
+        function weeklySettle() {
+            let salary = game.team.junior*800 + game.team.normal*1000 + game.team.expert*2000 + game.team.admin*1200;
+            if(game.money < salary) gameOver(`资金不足支付工资 ${salary}`);
+            game.money -= salary;
+            let techGain = game.team.junior*5 + game.team.normal*10 + game.team.expert*20;
+            game.tech += techGain;
+            let repGain = 0.05; if(game.team.admin>0) for(let i=0;i<game.team.admin;i++) repGain += (0.05+Math.random()*0.03);
+            game.reputation += repGain;
+            game.reputation -= game.bugCount * 0.05;
+            if(game.onlineEnabled) { game.reputation -= (0.01+Math.random()*0.02); let natural = Math.floor(Math.random()*20)+1; addPlayersAndMoney(natural); addLog(`🌐 线上自然增长 +${natural}`); }
+            let month = game.month;
+            let oldCount = game.playerCount;
+            let growth = 0;
+            let holidayFactor = 1.0;
+            if (month === 2) {
+                holidayFactor = 1 + 0.05 * game.winterBonusFactor;
+                game.winterBonusFactor *= 0.9;
+                if (game.winterBonusFactor < 0.01) game.winterBonusFactor = 0.01;
+            } else if (month === 7 || month === 8) {
+                holidayFactor = 1 + 0.10 * game.summerBonusFactor;
+                game.summerBonusFactor *= 0.9;
+                if (game.summerBonusFactor < 0.01) game.summerBonusFactor = 0.01;
+            } else {
+                holidayFactor = 1 - (0.0001 + Math.random()*0.004);
+            }
+            let newCount = Math.floor(oldCount * holidayFactor);
+            growth = newCount - oldCount;
+            if ((month === 2 || month === 7 || month === 8) && growth > 10000) {
+                growth = 10000;
+                newCount = oldCount + growth;
+            }
+            if (growth !== 0) addPlayersAndMoney(growth);
+            if (month === 1) {
+                let lossPercent = 0.10 + Math.random() * 0.05;
+                let loss = Math.floor(game.playerCount * lossPercent);
+                if (loss > 0) { addPlayersAndMoney(-loss); addLog(`📉 淡季（1月），人数减少 ${loss} (${Math.floor(lossPercent*100)}%)`); }
+            } else if (month === 6) {
+                let lossPercent = 0.05 + Math.random() * 0.05;
+                let loss = Math.floor(game.playerCount * lossPercent);
+                if (loss > 0) { addPlayersAndMoney(-loss); addLog(`🍂 温和淡季（6月），人数减少 ${loss} (${Math.floor(lossPercent*100)}%)`); }
+            }
+            if (growth > 20000 && !game.achievements.hugeGrowth) { game.hugeGrowthFlag = true; checkAchievements(); }
+            if(game.reputation <= 0.3 && Math.random()<0.3) { let loss = Math.floor(game.playerCount * (0.3+Math.random()*0.2)); if(loss>0) addPlayersAndMoney(-loss); addLog(`💢 退款事件，损失${loss}人`); }
+            if(game.reputation <= 0.1) addLog(`⚠️ 声誉极低，募捐/广告锁定`);
+            if(game.reputation <= 0) gameOver("声誉归零");
+            checkServerCrash();
+            game.actionPoints = game.actionMax;
+            game.extraBugChanceWeek = false;
+            game.recruitCountThisWeek = 0;
+            game.energy = Math.min(100, game.energy + 3);
+            if(game.week > 100) game.reputation = Math.max(0, game.reputation - 0.03);
+            game.week++;
+            game.totalWeeksSurvived++;
+            let nd = game.day + 7; let md = [31,28,31,30,31,30,31,31,30,31,30,31];
+            if((game.year%4===0 && game.year%100!==0)|| game.year%400===0) md[1]=29;
+            while(nd > md[game.month-1]) { nd -= md[game.month-1]; game.month++; if(game.month>12){ game.month=1; game.year++;} }
+            game.day = nd;
+            if (game.eventCooldown > 0) game.eventCooldown--;
+            if (game.eventCooldown === 0 && Math.random() < 0.45) triggerRandomEvent();
+            if (game.onlineEnabled) recordPressure();
+            checkAchievements();
+            updateUI();
+            addLog(`📆 第${game.week}周结算，工资-${salary}，技术+${techGain}`);
+        }
+
+        function performUpdate(type, act, money, eng, tech, verType, bugBase, playerType, needTech=0) {
+            if(game.tech < needTech) { addLog(`技术力不足 ${needTech}`); return; }
+            if(!canAffordAction(act, money, eng, tech)) return;
+            executeCost(act, money, eng, tech);
+            if(type==="small" && game.bugCount>0) { game.bugCount--; addLog(`小更新修复了1个bug，剩余${game.bugCount}`); }
+            else if(type==="big") { let fix = Math.min(3, game.bugCount); game.bugCount -= fix; addLog(`大更新修复了${fix}个bug，剩余${game.bugCount}`); }
+            else if(type==="rewrite") { let fixed = game.bugCount; game.bugCount = 0; addLog(`重写源代码修复了所有${fixed}个bug！`); }
+            incVersion(verType); tryAddBug(bugBase); addPlayersByUpdate(playerType);
+            addLog(`${type}完成 → ${game.version}`); updateUI();
+        }
+        function overtime() { let s=game.team.junior*800+game.team.normal*1000+game.team.expert*2000+game.team.admin*1200; let c=s*0.2; if(game.money<c){addLog("经费不足");return;} if(game.energy<20){addLog("精力不足");return;} game.money-=c; spendEnergy(20); let addAct=Math.floor(Math.random()*3)+3; game.actionPoints+=addAct; game.actionMax=Math.max(3,game.actionMax-1); let rd=0.03+Math.random()*0.07; game.reputation=Math.max(0,game.reputation-rd); game.extraBugChanceWeek=true; game.overtimeStress+=0.03; addLog(`⏰ 加班 +${addAct}行动, 声誉-${rd.toFixed(3)}, 下周上限-1`); updateUI(); }
+        function study() { if(!canAffordAction(1,0,20,0)) return; executeCost(1,0,20,0); let g=Math.floor(Math.random()*41)+10; game.tech+=g; addLog(`📚 学习 +${g}技术力`); updateUI(); }
+        function advertise() { if(game.reputation<=0.1){addLog("声誉过低");return;} let cost=Math.min(game.money*0.08,800); if(!canAffordAction(2,cost,50,0)) return; executeCost(2,cost,50,0); let gain = Math.max(5, Math.floor(game.playerCount / 3)); gain = Math.min(gain, 3000); addPlayersAndMoney(gain); addLog(`📢 广告花费${Math.floor(cost)}，新增${gain}人 (约为当前人数的1/3)`); updateUI(); }
+        function slackOff() { if(!canAffordAction(1,0,0,0)) return; executeCost(1,0,0,0); let rd=0.01+Math.random()*0.02; game.reputation=Math.max(0,game.reputation-rd); let eg=5+Math.random()*10; game.energy=Math.min(100,game.energy+eg); addLog(`🕊️ 摸鱼, 声誉-${rd.toFixed(3)}, 精力+${eg.toFixed(1)}%`); updateUI(); }
+        function crowdfund() { if(game.reputation<=0.1){addLog("声誉过低");return;} if(!canAffordAction(3,0,0,0)) return; executeCost(3,0,0,0); let inc=Math.floor(game.playerCount*game.reputation*1.5)*Math.pow(0.9,game.greedStack); game.money+=inc; let rd=0.2+Math.random()*0.1; game.reputation=Math.max(0,game.reputation-rd); game.greedStack++; addLog(`🎲 募捐 +${inc}元, 声誉-${rd.toFixed(3)}, 贪婪${game.greedStack}`); updateUI(); }
+        function developOnline() { if(game.onlineEnabled) return; if(game.tech<200){addLog("技术力不足200");return;} if(!canAffordAction(10,1000,50,200)) return; executeCost(10,1000,50,200); incVersion("online"); game.onlineEnabled=true; tryAddBug(4.0); addPlayersByUpdate("online"); addLog(`🌍 线上功能解锁`); updateUI(); }
+        function teamBuilding() { if(!canAffordAction(2,10,5,0)) return; executeCost(2,10,5,0); if(game.actionMax<10) { game.actionMax=Math.min(10,game.actionMax+1); addLog(`🏢 团建，行动上限恢复至 ${game.actionMax}`); } else addLog(`🏢 上限已达最大10`); updateUI(); }
+        function recruit(type) { if(game.recruitCountThisWeek>=4){addLog("本周已招募4人");return;} let total=game.team.junior+game.team.normal+game.team.expert+game.team.admin; if(total>=30){addLog("团队已达上限30");return;} if(game.actionPoints<1){addLog("行动值不足");return;} game.actionPoints--; if(type==="junior") game.team.junior++; else if(type==="normal") game.team.normal++; else if(type==="expert") game.team.expert++; else game.team.admin++; game.recruitCountThisWeek++; addLog(`👥 招募${type==="junior"?"萌新":type==="normal"?"普通":type==="expert"?"大神":"管理员"}，剩余${4-game.recruitCountThisWeek}次`); updateUI(); }
+
+        function getHardwarePriceForMultiple(model, type, additionalCount) {
+            let base = type === 'cpu' ? cpus[model].price : gpus[model].price;
+            let currentCount = type === 'cpu' ? (game.hardwarePurchaseCounter.cpu[model] || 0) : (game.hardwarePurchaseCounter.gpu[model] || 0);
+            let totalPrice = 0;
+            for (let i = 0; i < additionalCount; i++) { totalPrice += base * (1 + 0.3 * (currentCount + i)); }
+            return totalPrice;
+        }
+        function addCPU() { let input = document.getElementById("cpu_add_count"); let count = Math.min(10, Math.max(1, parseInt(input.value) || 1)); let totalPrice = getHardwarePriceForMultiple(game.cpuModel, 'cpu', count); if (game.money < totalPrice) { addLog(`经费不足，需要 ${Math.floor(totalPrice)} 元`); return; } game.money -= totalPrice; game.cpuQty += count; let counter = game.hardwarePurchaseCounter.cpu[game.cpuModel] || 0; game.hardwarePurchaseCounter.cpu[game.cpuModel] = counter + count; addLog(`增加 ${count} 块 ${game.cpuModel}，花费 ${Math.floor(totalPrice)} 元，现共 ${game.cpuQty} 块`); updateUI(); }
+        function addGPU() { let input = document.getElementById("gpu_add_count"); let count = Math.min(10, Math.max(1, parseInt(input.value) || 1)); let totalPrice = getHardwarePriceForMultiple(game.gpuModel, 'gpu', count); if (game.money < totalPrice) { addLog(`经费不足，需要 ${Math.floor(totalPrice)} 元`); return; } game.money -= totalPrice; game.gpuQty += count; let counter = game.hardwarePurchaseCounter.gpu[game.gpuModel] || 0; game.hardwarePurchaseCounter.gpu[game.gpuModel] = counter + count; addLog(`增加 ${count} 块 ${game.gpuModel}，花费 ${Math.floor(totalPrice)} 元，现共 ${game.gpuQty} 块`); updateUI(); }
+        function changeCPU(m){ let p=getHardwarePriceForMultiple(m,'cpu', game.cpuQty); if(game.money<p) return; game.money-=p; game.cpuModel=m; addLog(`更换CPU为 ${m}`); updateUI(); }
+        function changeGPU(m){ let p=getHardwarePriceForMultiple(m,'gpu', game.gpuQty); if(game.money<p) return; game.money-=p; game.gpuModel=m; addLog(`更换GPU为 ${m}`); updateUI(); }
+
+        function saveGame() { try{ let data=JSON.stringify(game,null,2); let blob=new Blob([data],{type:"application/json"}); let a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`game_save_week${game.week}.gds`; a.click(); URL.revokeObjectURL(a.href); addLog("💾 存档成功"); } catch(e){ alert("存档失败"); } }
+        function loadGame(file) { let reader=new FileReader(); reader.onload=function(e){ try{ let loaded=JSON.parse(e.target.result); if(typeof loaded.money!=='number') throw new Error(); Object.assign(game,loaded); if(!game.hardwarePurchaseCounter) game.hardwarePurchaseCounter={cpu:{},gpu:{}}; if(typeof game.consecutiveNoBugWeeks!=='number') game.consecutiveNoBugWeeks=0; if(typeof game.eventCooldown!=='number') game.eventCooldown=0; if(!game.pressureHistory) game.pressureHistory=[]; if(typeof game.summerBonusFactor !== 'number') game.summerBonusFactor = 1.0; if(typeof game.winterBonusFactor !== 'number') game.winterBonusFactor = 1.0; if(typeof game.totalWeeksSurvived !== 'number') game.totalWeeksSurvived = game.week-1; game.actionMax=Math.min(10,Math.max(3,game.actionMax)); game.energy=Math.min(100,Math.max(0,game.energy)); addLog("📂 读档成功"); updateUI(); } catch(err){ alert("读档失败：无效文件"); } }; reader.readAsText(file); }
+
+        function bindUI() {
+            document.getElementById("endWeekBtn").onclick=()=>{weeklySettle();updateUI();};
+            document.getElementById("resetGameBtn").onclick=()=>{resetGame();updateUI();};
+            document.getElementById("saveGameBtn").onclick=saveGame;
+            document.getElementById("loadGameBtn").onclick=()=>document.getElementById("loadFileInput").click();
+            document.getElementById("loadFileInput").onchange=e=>{if(e.target.files.length) loadGame(e.target.files[0]); e.target.value="";};
+            let acts=document.getElementById("weeklyActions");
+            acts.innerHTML=`<button class="btn" id="small" tooltip="消耗1行动,8💰,5%精力,5技术 | 修复1个bug,补丁+1,人数+1~2,0.05%新bug">🔧 小更新(1行/8💰/5%精/5技)</button>
+                <button class="btn" id="big" tooltip="消耗2行动,20💰,10%精力,20技术 | 修复3个bug,次版本+1,人数+5~10,0.1%新bug">⭐ 大更新(2行/20💰/10%精/20技)</button>
+                <button class="btn" id="rew" tooltip="消耗4行动,180💰,40%精力,100技术 | 修复所有bug,主版本+1,人数+20~50,0.75%新bug,需技术≥200">🔥 重写(4行/180💰/40%精/100技,需≥200技)</button>
+                <button class="btn" id="online" tooltip="消耗10行动,1000💰,50%精力,200技术 | 开启线上压力,人数x1.1,4%新bug">🌐 线上(10行/1000💰/50%精/200技)</button>
+                <button class="btn" id="ot" tooltip="消耗工资20%经费,20%精力 | +3~5行动,下周上限-1,永久+3%bug率">⏰ 加班(工资20%/20%精)</button>
+                <button class="btn" id="study" tooltip="消耗1行动,20%精力 | 技术力+10~50">📖 学习(1行/20%精)</button>
+                <button class="btn" id="ad" tooltip="消耗2行动,经费8%(≤800),50%精力 | 人数+max(5,floor(当前/3))上限3000">📢 广告(2行/8%经费/50%精)</button>
+                <button class="btn" id="slack" tooltip="消耗1行动 | 精力+5~15%,声誉-0.01~0.03">🕊️ 鸽(1行)</button>
+                <button class="btn" id="fund" tooltip="消耗3行动 | 收入=人数×声誉×1.5,声誉-0.2~0.3,贪婪印记">🎁 募捐(3行,周限1)</button>
+                <button class="btn" id="build" tooltip="消耗2行动,10💰,5%精力 | 永久恢复1行动上限(最高10)">🏢 团建(2行/10💰/5%精)</button>`;
+            document.getElementById("small").onclick=()=>performUpdate("小更新",1,8,5,5,"patch",0.05,"small",0);
+            document.getElementById("big").onclick=()=>performUpdate("大更新",2,20,10,20,"minor",0.1,"big",0);
+            document.getElementById("rew").onclick=()=>performUpdate("重写",4,180,40,100,"major",0.75,"rewrite",200);
+            document.getElementById("online").onclick=developOnline;
+            document.getElementById("ot").onclick=overtime;
+            document.getElementById("study").onclick=study;
+            document.getElementById("ad").onclick=advertise;
+            document.getElementById("slack").onclick=slackOff;
+            document.getElementById("fund").onclick=crowdfund;
+            document.getElementById("build").onclick=teamBuilding;
+            let recDiv=document.getElementById("recruitPanel");
+            recDiv.innerHTML=`<button class="btn" id="rjun" tooltip="周薪800,精力+1%,每周+5技术,bug+4%">🐣 萌新</button>
+                <button class="btn" id="rnor" tooltip="周薪1000,精力-3%,每周+10技术">👨‍💻 普通</button>
+                <button class="btn" id="rexp" tooltip="周薪2000,精力-5%,每周+20技术,bug-1%,可抵挡部分攻击">🧙 大神</button>
+                <button class="btn" id="radm" tooltip="周薪1200,精力-4%,每周+0.05~0.08声誉">📋 管理</button>
+                <span class="recruit-counter" id="recruitCounter">本周已招募: 0/4</span>`;
+            document.getElementById("rjun").onclick=()=>recruit("junior");
+            document.getElementById("rnor").onclick=()=>recruit("normal");
+            document.getElementById("rexp").onclick=()=>recruit("expert");
+            document.getElementById("radm").onclick=()=>recruit("admin");
+            let hw=document.getElementById("hardwareShop");
+            let cpuBtns=Object.keys(cpus).map(m=>`<button class="btn" onclick="window.changeCPU('${m}')" tooltip="价格${cpus[m].price}元 性能${cpus[m].perf}点">🖥️ ${m}</button>`).join("");
+            let gpuBtns=Object.keys(gpus).map(m=>`<button class="btn" onclick="window.changeGPU('${m}')" tooltip="价格${gpus[m].price}元 性能${gpus[m].perf}点">🎮 ${m}</button>`).join("");
+            hw.innerHTML=`<div><strong>CPU</strong> ${cpuBtns}
+                <div class="number-input-group"><span>➕增加</span><input type="number" id="cpu_add_count" min="1" max="10" value="1" style="width:55px;"><button class="btn" onclick="window.addCPU()">添加</button></div></div>
+                <div style="margin-top:16px;"><strong>GPU</strong> ${gpuBtns}
+                <div class="number-input-group"><span>➕增加</span><input type="number" id="gpu_add_count" min="1" max="10" value="1" style="width:55px;"><button class="btn" onclick="window.addGPU()">添加</button></div></div>`;
+        }
+        window.changeCPU=changeCPU; window.changeGPU=changeGPU; window.addCPU=addCPU; window.addGPU=addGPU;
+
+        function initGame() {
+            bindUI();
+            updateUI();
+            addLog("🎮 游戏已启动，祝你经营顺利！");
+        }
+        // 注意：原来自动调用init，现在等教程结束后再调用（在finishTutorial中调用）
+        // 但为了兼容，确保finishTutorial里调用initGame
+        window.initGame = initGame;
+        // 如果教程已经被跳过，确保调用
+        if (typeof initGame === 'function') {
+            // 不自动调用，等待教程结束
+        }
+    </script>
+</body>
+</html>
