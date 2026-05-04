@@ -473,12 +473,103 @@
         </div>
     </div>
 
-    <!-- 规则手册（保留） -->
-    <div class="rule-doc" style="display: none;" id="ruleDoc">
+    <!-- 完整规则手册（华丽版，含所有事件和机制） -->
+    <div class="rule-doc">
         <details>
-            <summary>📖 完整规则手册</summary>
+            <summary>📖 【展开】完整游戏规则 · 含所有数值、事件、成就</summary>
             <div style="margin-top: 24px;">
-                <p>规则详情请参考游戏内说明或教程。完整规则在教程结束后可展开查看。</p>
+                <h3>🎯 游戏目标</h3>
+                <p>经营独立游戏工作室，通过版本更新、招募员工、升级硬件等决策，扩大玩家规模并维持服务器稳定，避免破产或声誉归零。</p>
+
+                <h3>💰 核心资源</h3>
+                <ul>
+                    <li><span class="highlight-money">💰 经费</span>：初始 <span class="highlight-money">800元</span>。每新增1名玩家立即获得 <span class="highlight-money">5元</span> 收入。</li>
+                    <li><span class="highlight-energy">⚡ 精力</span>：初始 <span class="highlight-energy">50%</span>，上限100%。每周自动恢复<span class="highlight-energy">3%</span>。低于阈值有严重惩罚。</li>
+                    <li><span class="highlight-tech">🔧 技术力</span>：初始 <span class="highlight-tech">40点</span>。决定能否执行高级更新（重写需≥200，线上需≥200）。团队每周贡献技术力。</li>
+                    <li><span class="highlight-rep">⭐ 声誉</span>：初始 <span class="highlight-rep">1.2</span>。低于0.5增加服务器压力，低于0.1锁定募捐/广告，归零则游戏结束。</li>
+                    <li><strong>⚡ 行动值</strong>：每周初始等于当前上限（初始上限<span class="highlight-energy">10</span>）。加班会削减下周上限，团队建设可恢复上限（最高10）。</li>
+                </ul>
+
+                <h3>🛠️ 行动详情 (鼠标悬停按钮可见具体消耗)</h3>
+                <table class="rule-table">
+                    <tr><th>行动</th><th>消耗</th><th>效果</th><th>额外说明</th></tr>
+                    <tr><td class="highlight-warning">🔧 小更新</td><td>1行动/8💰/5%精/5技</td><td>修复<span class="highlight-rep">1个恶性bug</span>，版本补丁+1 (V1.0→V1.0-1)，人数+1~2</td><td><span class="highlight-rep">0.05%</span>概率产生新bug</td></tr>
+                    <tr><td class="highlight-warning">⭐ 大更新</td><td>2行动/20💰/10%精/20技</td><td>修复<span class="highlight-rep">3个恶性bug</span>，次版本+1 (V1.0-1→V1.1)，人数+5~10</td><td><span class="highlight-rep">0.1%</span>概率新bug</td></tr>
+                    <tr><td class="highlight-warning">🔥 重写</td><td>4行动/180💰/40%精/100技</td><td>修复<span class="highlight-rep">所有恶性bug</span>，主版本+1 (V1.1→V2.0)，人数+20~50</td><td>需技术≥200，<span class="highlight-rep">0.75%</span>新bug</td></tr>
+                    <tr><td class="highlight-warning">🌐 开发线上</td><td>10行动/1000💰/50%精/200技</td><td>版本变为V2.0，人数×1.1，<strong>开启服务器压力系统</strong></td><td>需技术≥200，<span class="highlight-rep">4%</span>新bug，一次性</td></tr>
+                    <tr><td class="highlight-warning">⏰ 加班</td><td>本周工资20%经费/20%精力</td><td>立即获得<span class="highlight-energy">3~5额外行动</span>，但<span class="highlight-rep">下周行动上限-1</span>，声誉-0.03~0.1</td><td>本周bug率+25%，永久增加<span class="highlight-rep">3%恶性bug概率</span>，每周限1次</td></tr>
+                    <tr><td class="highlight-warning">📖 学习</td><td>1行动/20%精力</td><td>技术力+10~50</td><td>无副作用</td></tr>
+                    <tr><td class="highlight-warning">📢 广告</td><td>2行动/经费8%(≤800)/50%精力</td><td>人数增加 = max(5, floor(当前人数/3))，上限3000</td><td>声誉&lt;0.1时锁定</td></tr>
+                    <tr><td class="highlight-warning">🕊️ 鸽</td><td>1行动</td><td>精力恢复5%~15%，声誉-0.01~0.03</td><td><span class="highlight-money">唯一主动加精力手段，无其他惩罚</span></td></tr>
+                    <tr><td class="highlight-warning">🎁 募捐</td><td>3行动</td><td>收入 = 人数 × 声誉 × 1.5，声誉-0.2~0.3，贪婪印记+1（后续-10%）</td><td>每周限1次，声誉&lt;0.1锁定</td></tr>
+                    <tr><td class="highlight-warning">🏢 团建</td><td>2行动/10💰/5%精力</td><td>永久恢复1点行动上限（最高10）</td><td>可抵消加班损失</td></tr>
+                  </table>
+
+                <h3>👥 招募 (每周最多4人，每次消耗1行动值，团队总上限30人)</h3>
+                <table class="rule-table">
+                    <tr><th>职业</th><th>周薪</th><th>效果</th></tr>
+                    <tr><td class="highlight-warning">🐣 萌新程序员</td><td class="highlight-money">800</td><td>精力花费+1%，每周+5技术，恶性bug概率+4%</td></tr>
+                    <tr><td class="highlight-warning">👨‍💻 普通程序员</td><td class="highlight-money">1000</td><td>精力花费-3%，每周+10技术</td></tr>
+                    <tr><td class="highlight-warning">🧙 大神程序员</td><td class="highlight-money">2000</td><td>精力花费-5%，每周+20技术，恶性bug概率-1%<br><span class="highlight-rep">可抵挡黑客/勒索病毒（每个大神提供10%几率，最高80%）</span></td></tr>
+                    <tr><td class="highlight-warning">📋 管理员</td><td class="highlight-money">1200</td><td>精力花费-4%，每周增加声誉0.05~0.08</td></tr>
+                  </table>
+
+                <h3>💻 硬件性能与价格（CPU性能大幅提升）</h3>
+                <p><strong>CPU性能点</strong>：9950X3D:3500, 9900X:2800, 7800X3D:2200, 7600X:1600, 5600:1000, i3-12100F:600。<br>
+                <strong>GPU性能点</strong>：RTX 5090:5000, RTX 4090:4000, RTX 5080:2100, RTX 4060Ti:1300, RTX 4060:1100, RTX 3050(8G):750, RTX 3050(6G):550。<br>
+                <strong>价格递增规则</strong>：同型号每增加一块，价格增加基础价格的30%（线性递增）。支持批量添加（1~10块）。<br>
+                <strong>压力公式</strong>：<span class="highlight-warning">CPU压力 = 人数 × 1.5</span>，<span class="highlight-warning">GPU压力 = 人数 × 1.2</span>。超过性能点则服务器爆炸，连续爆炸周数线性增加惩罚。</p>
+
+                <h3>📅 每周结算机制</h3>
+                <ul>
+                    <li>支付团队工资 → 资金不足直接破产。</li>
+                    <li>团队提供技术力/声誉增长；每个恶性bug降低0.05声誉。</li>
+                    <li>线上功能开启后：每周自然增长1~20人，但声誉自然下降0.01~0.03。</li>
+                    <li><span class="highlight-warning">寒假（2月）</span>：人数增加（初始+5%系数，每次寒假后系数递减10%，单次净增不超过10000人）</li>
+                    <li><span class="highlight-warning">暑假（7月、8月）</span>：人数增加（初始+10%系数，每次暑假后系数递减10%，单次净增不超过10000人）</li>
+                    <li><span class="highlight-warning">淡季（1月）</span>：人数减少10%~15%。</li>
+                    <li><span class="highlight-warning">6月温和淡季</span>：人数减少5%~10%。</li>
+                    <li>其他月份人数微幅衰减（-0.01%~-0.5%）。</li>
+                    <li>声誉≤0.3时，每周30%概率发生“玩家集体退款”（损失30%~50%玩家）。</li>
+                    <li>服务器压力检测 (线上功能开启后)。</li>
+                    <li>行动值重置为当前上限，精力恢复3%，招募计数归零。</li>
+                </ul>
+
+                <h3>⚡ 精力惩罚</h3>
+                <ul>
+                    <li><span class="highlight-energy">精力 &lt; 30%</span>：所有行动经费消耗<span class="highlight-money">+50%</span>。</li>
+                    <li><span class="highlight-energy">精力 &lt; 10%</span>：行动值消耗翻倍，募捐/广告收益-80% 。</li>
+                    <li><span class="highlight-energy">精力 &lt; 5%</span>：行动值消耗三倍，收入-50% 。</li>
+                    <li>精力 0% → 游戏结束。</li>
+                </ul>
+
+                <h3>🎲 随机事件系统（含权重，特色事件低概率）</h3>
+                <p>每周结算时有45%概率触发随机事件。动态难度：经费<1000时正面+20%，声誉<0.6时负面+15%。<br>
+                <strong>正面事件（权重1）</strong>：口碑爆棚(声誉+0.2)、自发安利(人数+5%)、技术突破(技术+30)、投资商注资(获得人数×2金钱)<br>
+                <strong>负面事件（特色权重0.2，其他权重1）</strong>：黑客攻击(新bug，需人数≥1w且线上)、竞品发布(人数-10%)、员工罢工(精力-10%)、勒索病毒(损失金钱min(金钱×20%,2000)，需人数≥1w且线上)、<span class="highlight-rep">数据泄露丑闻(声誉-0.15,人数-5%)、恶性竞争抹黑(声誉-0.2)、服务器硬件故障(损失金钱min(金钱×15%,5000))、差评风波(人数-8%)</span>。<br>
+                🛡️ 黑客/勒索病毒可被大神程序员抵挡（每个大神10%几率，最高80%）。</p>
+
+                <h3>🏆 成就一览（一次性奖励）</h3>
+                <table class="rule-table">
+                    <tr><th>成就名称</th><th>触发条件</th><th>奖励</th></tr>
+                    <tr><td class="highlight-warning">🏆 百人斩</td><td>游玩人数达到100</td><td class="highlight-money">+500💰</td></tr>
+                    <tr><td class="highlight-warning">🏆 千人斩</td><td>游玩人数达到1000</td><td class="highlight-money">+2000💰</td></tr>
+                    <tr><td class="highlight-warning">🏆 万人迷</td><td>游玩人数达到10000</td><td class="highlight-money">+10000💰</td></tr>
+                    <tr><td class="highlight-warning">🏆 技术革新</td><td>技术力达到200</td><td class="highlight-rep">声誉+0.3</td></tr>
+                    <tr><td class="highlight-warning">🏆 技术爆炸</td><td>技术力达到500</td><td class="highlight-money">+3000💰</td></tr>
+                    <tr><td class="highlight-warning">🏆 稳如泰山</td><td>连续10周无恶性bug</td><td class="highlight-rep">声誉+0.5</td></tr>
+                    <tr><td class="highlight-warning">🏆 绝对防御</td><td>连续20周无恶性bug</td><td class="highlight-money">+5000💰</td></tr>
+                    <tr><td class="highlight-warning">🏆 在线启航</td><td>首次开通线上功能</td><td class="highlight-tech">技术力+50</td></tr>
+                    <tr><td class="highlight-warning">🏆 灾难大师</td><td>服务器连续爆炸5周</td><td class="highlight-money">+2000💰</td></tr>
+                    <tr><td class="highlight-warning">🏆 铁饭碗</td><td>连续52周未破产</td><td class="highlight-money">+3000💰</td></tr>
+                    <tr><td class="highlight-warning">🏆 硬件狂魔</td><td>总CPU+GPU数量≥20</td><td class="highlight-money">+5000💰</td></tr>
+                    <tr><td class="highlight-warning">🏆 百战不死</td><td>累计度过100周</td><td class="highlight-money">+10000💰</td></tr>
+                    <tr><td class="highlight-warning">🏆 人山人海</td><td>单月人数净增长超过20000</td><td class="highlight-money">+8000💰</td></tr>
+                  </table>
+
+                <h3>💾 存档 / 读档</h3>
+                <p>点击「存档」下载 .gds 文件（JSON格式），点击「读档」选择文件即可恢复进度。所有状态（成就、事件冷却、递减系数等）均会被保存。</p>
+                <p style="margin-top: 12px;">✨ <strong>策略提示</strong>：大更新可一次性修复3个bug，重写可清空所有bug，非常适合bug积压时使用。寒暑假增幅会逐次递减，后期需靠硬件和广告维持增长。1月淡季减少10-15%，6月淡季减少5-10%，请提前做好资金储备。</p>
             </div>
         </details>
     </div>
